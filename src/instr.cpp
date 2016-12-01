@@ -60,7 +60,7 @@ uint64_t getAllocatedSize(Instruction *I, Module* M){
 	DataLayout* DL = new DataLayout(M);
 
 	Type* Ty;
-	  
+
 	if(const AllocaInst *AI = dyn_cast<AllocaInst>(I)){
 	  Ty = AI->getAllocatedType();
 	}
@@ -272,10 +272,15 @@ tuple<vector<Value *>, Instruction*> InsertArgument(InstrumentInstruction rw_new
 				if(i == argIndex) {
 					if(argV->getType() != var->second->getType()) {
 						//TODO other types?
-						if(!var->second->getType()->isPtrOrPtrVectorTy()){
+						if(!var->second->getType()->isPtrOrPtrVectorTy() && !var->second->getType()->isIntegerTy()){
 							args.push_back(var->second);
 						}else{
-							CastInst *CastI = CastInst::CreatePointerCast(var->second, argV->getType());
+							CastInst *CastI;
+							if(var->second->getType()->isPtrOrPtrVectorTy()){
+								CastI = CastInst::CreatePointerCast(var->second, argV->getType());
+							}else{
+								CastI = CastInst::CreateIntegerCast(var->second, argV->getType(), true); //TODO do something about signed argument
+							}
                             if (Instruction *Inst = dyn_cast<Instruction>(var->second))
                                 CloneMetadata(Inst, CastI);
 	                        if(where == InstrumentPlacement::BEFORE) {
@@ -602,17 +607,17 @@ uint64_t getGlobalVarSize(GlobalVariable* GV, Module* M){
  */
 bool InstrumentGlobals(Module& M, Rewriter rw) {
 	GlobalVarsRule rw_globals = rw.getGlobalsConfig();
-	
+
 	// If there is no rule for global variables, do not try to instrument
 	if(rw_globals.inFunction.empty() || rw_globals.globalVar.globalVariable.empty()) // TODO this is not very nice
-	  return true; 
-	
+	  return true;
+
 	// Iterate through global variables
 	Module::global_iterator GI = M.global_begin(), GE = M.global_end();
 	for ( ; GI != GE; ++GI) {
 	    GlobalVariable *GV = dyn_cast<GlobalVariable>(GI);
 	    if (!GV) continue;
-	    
+
 	    if(rw_globals.inFunction == "*"){
 	      //TODO
 	      return false;
@@ -622,14 +627,14 @@ bool InstrumentGlobals(Module& M, Rewriter rw) {
 	      Function* F = M.getFunction(rw_globals.inFunction);
 	      // Get operands of new instruction
 	      map <string, Value*> variables;
-	      
+
 	      if(rw_globals.globalVar.globalVariable != "*")
 		variables[rw_globals.globalVar.globalVariable] = GV;
 	      if(rw_globals.globalVar.globalVariable != "*"){
 		LLVMContext &Context = getGlobalContext();
 		variables[rw_globals.globalVar.getSizeTo] = ConstantInt::get(Type::getInt64Ty(Context), getGlobalVarSize(GV, &M));
 	      }
-	      
+
 	      // Try to instrument the code
 	      if(checkAnalysis(rw_globals.condition,variables)) {
 		// Try to apply rule
@@ -655,9 +660,9 @@ bool InstrumentGlobals(Module& M, Rewriter rw) {
 bool instrumentModule(Module &M, Rewriter rw) {
 	// Instrument global variables
 	if(!InstrumentGlobals(M, rw)) return false;
-	
+
 	RewriterConfig rw_config = rw.getConfig();
-  
+
 	// Instrument instructions in functions
 	for (Module::iterator Fiterator = M.begin(), E = M.end(); Fiterator != E; ++Fiterator) {
 
