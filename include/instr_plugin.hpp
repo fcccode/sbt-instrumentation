@@ -42,6 +42,10 @@ class InstrPlugin
         return true;
       }
 
+	  virtual bool isUsed(llvm::Value*){
+		  return true;
+	  }
+
 	  virtual bool isConstant(llvm::Value* a) {
         return llvm::isa<llvm::Constant>(a);
 	  }

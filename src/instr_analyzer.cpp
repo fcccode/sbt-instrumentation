@@ -48,7 +48,9 @@ bool Analyzer::shouldInstrument(InstrPlugin* plugin, const string &condition, ll
 		return plugin->isValidPointer(a, b);
 	} else if (condition == "!isValidPointer") {
 		return !plugin->isValidPointer(a, b);
-    }
+    } else if (condition == "isUsed"){
+		return plugin->isUsed(a);
+	}
 
     /* TODO
 	if(condition.compare("!=")){

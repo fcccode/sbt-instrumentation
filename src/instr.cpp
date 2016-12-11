@@ -606,7 +606,7 @@ uint64_t getGlobalVarSize(GlobalVariable* GV, Module* M){
  * @param rw_config parsed rules to apply.
  * @return true if instrumentation of global variables was done without problems, false otherwise
  */
-bool InstrumentGlobals(Module& M, Rewriter rw) {
+bool instrumentGlobals(Module& M, Rewriter rw) {
 	GlobalVarsRule rw_globals = rw.getGlobalsConfig();
 
 	// If there is no rule for global variables, do not try to instrument
@@ -622,7 +622,7 @@ bool InstrumentGlobals(Module& M, Rewriter rw) {
 	    if(rw_globals.inFunction == "*"){
 	      //TODO
 	      return false;
-	      logger.write_error("Rule for global variables for instrumenting to all function not supported yet.");
+	      logger.write_error("Rule for instrumenting global variables in all functions not supported yet.");
 	    }
 	    else{
 	      Function* F = M.getFunction(rw_globals.inFunction);
@@ -660,7 +660,7 @@ bool InstrumentGlobals(Module& M, Rewriter rw) {
  */
 bool instrumentModule(Module &M, Rewriter rw) {
 	// Instrument global variables
-	if(!InstrumentGlobals(M, rw)) return false;
+	if(!instrumentGlobals(M, rw)) return false;
 
 	RewriterConfig rw_config = rw.getConfig();
 

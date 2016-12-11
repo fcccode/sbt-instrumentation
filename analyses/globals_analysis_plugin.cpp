@@ -6,7 +6,16 @@
 class GlobalsAnalysisPlugin : public InstrPlugin{
 	public:
 	 GlobalsAnalysisPlugin(llvm::Module* module) {
-		 llvm::errs() << "Running analysis on global variables...\n";
+		// llvm::errs() << "Running analysis on global variables...\n";
+	 }
+
+	 bool isUsed(llvm::Value *globalVariable){
+		 if(globalVariable->getNumUses() > 0){
+			 return true;
+		 }
+		 else{
+			 return false;
+		 }
 	 }
 };
 

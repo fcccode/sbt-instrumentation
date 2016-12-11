@@ -1,6 +1,6 @@
 {
 	"file": "memsafety.c",
-	"analyses": ["libPoints_to_plugin.so"],
+	"analyses": ["libPoints_to_plugin.so", "libGlobals_analysis_plugin.so"],
 	"globalVariablesRule": 	{
 				    "findGlobals": {
 							  "globalVariable": "<t1>",
@@ -12,7 +12,8 @@
 							  "instruction": "call",
 							  "operands": ["<t1>","<t2>", "1", "__INSTR_remember"]
 						      },
-				    "in": "main"
+				    "in": "main",
+				    "condition": ["isUsed", "<t1>"]
 				},
 	"instructionRules":
 	[
