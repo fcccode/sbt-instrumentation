@@ -50,7 +50,13 @@ bool Analyzer::shouldInstrument(InstrPlugin* plugin, const string &condition, ll
 		return !plugin->isValidPointer(a, b);
     } else if (condition == "isUsed"){
 		return plugin->isUsed(a);
-	}
+	} else if (condition == "!isUsed"){
+		return !plugin->isUsed(a);
+	} else if (condition == "isGlobal"){
+		return plugin->isGlobal(a);
+	} else if (condition == "!isGlobal"){
+		return !plugin->isGlobal(a);
+	} 
 
     /* TODO
 	if(condition.compare("!=")){

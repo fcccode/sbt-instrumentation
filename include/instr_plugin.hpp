@@ -46,6 +46,10 @@ class InstrPlugin
 		  return true;
 	  }
 
+	  virtual bool isGlobal(llvm::Value*){
+		  return true;
+	  }
+
 	  virtual bool isConstant(llvm::Value* a) {
         return llvm::isa<llvm::Constant>(a);
 	  }
