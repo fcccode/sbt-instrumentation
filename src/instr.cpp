@@ -51,6 +51,37 @@ void usage(char *name) {
 }
 
 /**
+ * Get size of GV type.
+ * @param I instruction.
+ * @param M module.
+ * @return size of GV type.
+ */
+uint64_t getGVSize(Instruction *I, Module* M){
+	DataLayout* DL = new DataLayout(M);
+
+	Type* Ty;
+
+	if(const StoreInst *SI = dyn_cast<StoreInst>(I)){
+	  Ty = SI->getOperand(1)->getType()->getContainedType(0);
+	}
+	else if(const LoadInst *LI = dyn_cast<LoadInst>(I)){
+	  Ty = LI->getOperand(0)->getType()->getContainedType(0);
+	}
+	else{
+	  Ty = I->getOperand(0)->getType();
+	}
+
+	if(!Ty->isSized())
+		return 0;
+
+	uint64_t size = DL->getTypeAllocSize(Ty);
+
+	delete DL;
+
+	return size;
+}
+
+/**
  * Get size of allocated type.
  * @param I instruction.
  * @param M module.
@@ -170,7 +201,7 @@ void InsertCallInstruction(Function* CalleeF, vector<Value *> args,
         // so just add debug loc of the beginning of the function
         newInstr->setDebugLoc(DebugLoc::get(DS->getLine(), 0, DS));
     }
-
+    
 	if(rw_rule.where == InstrumentPlacement::BEFORE) {
 		// Insert before
 		newInstr->insertBefore(currentInstr);
@@ -452,34 +483,47 @@ bool CheckOperands(InstrumentInstruction rwIns, Instruction* ins, map <string, V
  * @param variables
  * @return true if condition is ok, false otherwise
  */
-bool checkAnalysis(list<string> condition, const map<string, Value*>& variables){
-	// condition: first element is operator, other one or two elements
-	// are variables, TODO do we need more than two variables?
-	if(condition.empty())
+bool checkAnalysis(list<list<string>> conditions, const map<string, Value*>& variables){
+	if(conditions.size() == 0)
 		return true;
 
-	string conditionOp = condition.front();
-	list<string>::iterator it = condition.begin();
-	it++;
-	string aName = *it;
-	string bName = "";
+	for(auto &condition : conditions){
 
-	Value* aValue = (variables.find(aName))->second;
-	Value* bValue = NULL;
-	if(condition.size()>2){
+		// condition: first element is operator, other one or two elements
+		// are variables, TODO do we need more than two variables?
+		string conditionOp = condition.front();
+		list<string>::iterator it = condition.begin();
 		it++;
-		bName = *it;
-		bValue = (variables.find(bName))->second;
-	}
+		string aName = *it;
+		string bName = "";
 
-	for(auto& plugin : plugins){
-		if(!Analyzer::shouldInstrument(plugin.get(), conditionOp, aValue, bValue)){
-            // some plugin told us that we should not instrument
-			return false;
+		Value* aValue = (variables.find(aName))->second;
+		Value* bValue = NULL;
+		if(condition.size()>2){
+			it++;
+			bName = *it;
+			bValue = (variables.find(bName))->second;
 		}
-	}
+		
+		uint negCondition = plugins.size();
+		for(auto& plugin : plugins){
+			
+			if(conditionOp[0] == '!' && !Analyzer::shouldInstrument(plugin.get(), conditionOp, aValue, bValue)){
+				negCondition--;
+			}
+			
+			if(conditionOp[0] != '!' && !Analyzer::shouldInstrument(plugin.get(), conditionOp, aValue, bValue)){
+				return false;
+				
+			}
+			
+		}
+		if(negCondition == 0 && conditionOp[0] == '!'){
+		  return false;
+		}
 
-    // all analyses told that we should instrument
+	}
+	// All conditions were satisfied
 	return true;
 }
 
@@ -542,18 +586,22 @@ bool CheckInstruction(Instruction* ins, Module& M, Function* F, RewriterConfig r
 			}
 		}
 
-		if(rw.foundInstrs.size() == 1){
+		if(instrument && rw.foundInstrs.size() == 1){
 			InstrumentInstruction allocaIns = rw.foundInstrs.front();
-			if(!allocaIns.getSizeTo.empty()){
+			if(!allocaIns.getAllocatedTypeSize.empty()){
 				LLVMContext &Context = getGlobalContext();
-				variables[allocaIns.getSizeTo] = ConstantInt::get(Type::getInt64Ty(Context), getAllocatedSize(ins,&M));
+				variables[allocaIns.getAllocatedTypeSize] = ConstantInt::get(Type::getInt64Ty(Context), getAllocatedSize(ins,&M));
+			}
+			if(!allocaIns.getSize.empty()){
+				LLVMContext &Context = getGlobalContext();
+				variables[allocaIns.getSize] = ConstantInt::get(Type::getInt64Ty(Context), getGVSize(ins,&M));
 			}
 
 		}
 
 
 		// if all instructions match, try to instrument the code
-		if(instrument && checkAnalysis(rw.condition,variables)) {
+		if(instrument && checkAnalysis(rw.conditions,variables)) {
 			// try to apply rule
 			Instruction *where;
 			if(rw.where == InstrumentPlacement::BEFORE){
@@ -586,8 +634,7 @@ uint64_t getGlobalVarSize(GlobalVariable* GV, Module* M){
 
 	DataLayout* DL = new DataLayout(M);
 
-	Type* Ty = GV->getType()->getElementType();
-
+	Type* Ty = GV->getType()->getContainedType(0); 
 
 	if(!Ty->isSized())
 		return 0;
@@ -598,7 +645,6 @@ uint64_t getGlobalVarSize(GlobalVariable* GV, Module* M){
 
 	return size;
 }
-
 
 /**
  * Instruments global variable if they should be instrumented.
@@ -631,13 +677,13 @@ bool instrumentGlobals(Module& M, Rewriter rw) {
 
 	      if(rw_globals.globalVar.globalVariable != "*")
 		variables[rw_globals.globalVar.globalVariable] = GV;
-	      if(rw_globals.globalVar.globalVariable != "*"){
+	      if(rw_globals.globalVar.getAllocatedTypeSize != "*"){
 		LLVMContext &Context = getGlobalContext();
-		variables[rw_globals.globalVar.getSizeTo] = ConstantInt::get(Type::getInt64Ty(Context), getGlobalVarSize(GV, &M));
+		variables[rw_globals.globalVar.getAllocatedTypeSize] = ConstantInt::get(Type::getInt64Ty(Context), getGlobalVarSize(GV, &M));
 	      }
 
 	      // Try to instrument the code
-	      if(checkAnalysis(rw_globals.condition,variables)) {
+	      if(checkAnalysis(rw_globals.conditions,variables)) {
 		// Try to apply rule
 		inst_iterator IIterator = inst_begin(F);
 		Instruction *firstI = &*IIterator; //TODO

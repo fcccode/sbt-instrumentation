@@ -17,8 +17,6 @@ void Rewriter::parseConfig(ifstream &config_file) {
 		throw runtime_error("Config parsing failure.");
 	}
 
-	// TODO catch exceptions here
-
 	// load paths to analyses
 	for(uint i = 0; i < json_rules["analyses"].size(); ++i){
 		this->analysisPaths.push_back(json_rules["analyses"][i].asString());
@@ -39,7 +37,8 @@ void Rewriter::parseConfig(ifstream &config_file) {
 			for (uint j = 0; j < json_rules["instructionRules"][i]["findInstructions"][k]["operands"].size(); ++j) {
 				instr.parameters.push_back(json_rules["instructionRules"][i]["findInstructions"][k]["operands"][j].asString());
 			}
-			instr.getSizeTo = json_rules["instructionRules"][i]["findInstructions"][k]["getSizeTo"].asString();
+			instr.getSize = json_rules["instructionRules"][i]["findInstructions"][k]["getSize"].asString();
+			instr.getAllocatedTypeSize = json_rules["instructionRules"][i]["findInstructions"][k]["getAllocatedTypeSize"].asString();
 			instr.stripInboundsOffsets = json_rules["instructionRules"][i]["findInstructions"][k]["stripInboundsOffsets"].asString();
 			r.foundInstrs.push_back(instr);
 		}
@@ -63,8 +62,13 @@ void Rewriter::parseConfig(ifstream &config_file) {
 
 		r.inFunction = json_rules["instructionRules"][i]["in"].asString();
 
-		for(uint j = 0; j < json_rules["instructionRules"][i]["condition"].size(); ++j){
-			r.condition.push_back(json_rules["instructionRules"][i]["condition"][j].asString());
+		// Get conditions for instruction
+		for(uint j = 0; j < json_rules["instructionRules"][i]["conditions"].size(); ++j){
+			list<string> condition;
+			for(uint k = 0; k < json_rules["instructionRules"][i]["conditions"][j].size(); k++){
+				condition.push_back(json_rules["instructionRules"][i]["conditions"][j][k].asString());
+			}
+			r.conditions.push_back(condition);
 		}
 
 		rw_config.push_back(r);
@@ -76,17 +80,22 @@ void Rewriter::parseConfig(ifstream &config_file) {
 
 	// Get rule for global variables
 	rw_globals_rule.globalVar.globalVariable = json_rules["globalVariablesRule"]["findGlobals"]["globalVariable"].asString();
-	rw_globals_rule.globalVar.getSizeTo = json_rules["globalVariablesRule"]["findGlobals"]["getSizeTo"].asString();
-
-	for(uint j = 0; j < json_rules["globalVariablesRule"]["condition"].size(); ++j){
-		rw_globals_rule.condition.push_back(json_rules["globalVariablesRule"]["condition"][j].asString());
-	}
+	rw_globals_rule.globalVar.getAllocatedTypeSize = json_rules["globalVariablesRule"]["findGlobals"]["getAllocatedTypeSize"].asString();
 
 	rw_globals_rule.newInstr.returnValue = json_rules["globalVariablesRule"]["newInstruction"]["returnValue"].asString();
 	rw_globals_rule.newInstr.instruction = json_rules["globalVariablesRule"]["newInstruction"]["instruction"].asString();
 
 	for (uint j = 0; j < json_rules["globalVariablesRule"]["newInstruction"]["operands"].size(); ++j) {
 		rw_globals_rule.newInstr.parameters.push_back(json_rules["globalVariablesRule"]["newInstruction"]["operands"][j].asString());
+	}
+
+	// Get conditions for instrumenting global variables
+	for(uint j = 0; j < json_rules["globalVariablesRule"]["conditions"].size(); ++j){
+		list<string> condition;
+		for(uint k = 0; k < json_rules["globalVariablesRule"]["conditions"][j].size(); k++){
+			condition.push_back(json_rules["globalVariablesRule"]["conditions"][j][k].asString());
+		}
+		rw_globals_rule.conditions.push_back(condition);
 	}
 
 	rw_globals_rule.inFunction = json_rules["globalVariablesRule"]["in"].asString();

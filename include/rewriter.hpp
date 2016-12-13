@@ -19,14 +19,15 @@ class InstrumentInstruction {
 	std::string returnValue;
 	std::string instruction;
 	std::list<std::string> parameters;
-	std::string getSizeTo;
+	std::string getSize;
+	std::string getAllocatedTypeSize;
 	std::string stripInboundsOffsets;
 };
 
 class InstrumentGlobalVar {
  public:
 	std::string globalVariable;
-	std::string getSizeTo;
+	std::string getAllocatedTypeSize;
 };
 
 class GlobalVarsRule {
@@ -34,7 +35,7 @@ class GlobalVarsRule {
 	InstrumentGlobalVar globalVar;
 	InstrumentInstruction newInstr;
 	std::string inFunction;
-	std::list<std::string> condition;
+	std::list<std::list<std::string>> conditions;
 };
 
 typedef std::list<InstrumentInstruction> InstrumentSequence;
@@ -45,7 +46,7 @@ class RewriteRule {
 	InstrumentInstruction newInstr;
 	InstrumentPlacement where;
 	std::string inFunction;
-	std::list<std::string> condition;
+	std::list<std::list<std::string>> conditions;
 };
 
 typedef std::list<RewriteRule> RewriterConfig;

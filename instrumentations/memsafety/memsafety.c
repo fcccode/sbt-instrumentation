@@ -171,6 +171,13 @@ void __INSTR_check_range(fsm_id id, int range) {
 	}
 }
 
+void __INSTR_check_constant_range(a_size size, a_size range){
+	if(range > size){
+		assert(0 && "load/store/memset/... on invalid pointer");
+		__VERIFIER_error();
+	}
+}
+
 void __INSTR_check_load_store(fsm_id id, a_size range) {
 	fsm *r = __INSTR_fsm_list_search(id);
 

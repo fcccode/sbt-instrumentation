@@ -4,7 +4,7 @@
 	"globalVariablesRule": 	{
 				    "findGlobals": {
 							  "globalVariable": "<t1>",
-							  "getSizeTo": "<t2>"
+							  "getAllocatedTypeSize": "<t2>"
 						    }
 						      ,
 				    "newInstruction": {
@@ -13,7 +13,7 @@
 							  "operands": ["<t1>","<t2>", "1", "__INSTR_remember"]
 						      },
 				    "in": "main",
-				    "condition": ["isUsed", "<t1>"]
+				    "conditions": [["isUsed", "<t1>"]]
 				},
 	"instructionRules":
 	[
@@ -23,9 +23,7 @@
 							"returnValue": "<t1>",
 							"instruction": "alloca",
 							"operands": ["<t0>"],
-							// get only size of _one_ element,
-							// maybe rename to "getAllocatedTypeSize"
-							"getSizeTo": "<t2>"
+							"getAllocatedTypeSize": "<t2>"
 						}
 					   ],
 			"newInstruction": {
@@ -261,6 +259,7 @@
 					      "operands": ["<t3>","<t4>", "__INSTR_check_range"],
 					      "stripInboundsOffsets": "<t3>"
 					  },
+			"conditions": [["!isGlobal", "<t3>"]],
 			"where": "before",
 			"in": "*"
 		},
@@ -278,6 +277,7 @@
 					      "operands": ["<t3>","<t4>", "__INSTR_check_range"],
 					      "stripInboundsOffsets": "<t3>"
 					  },
+			"conditions": [["!isGlobal", "<t3>"]],
 			"where": "before",
 			"in": "*"
 		},
@@ -295,6 +295,64 @@
 					      "operands": ["<t3>","<t4>", "__INSTR_check_range"],
 					      "stripInboundsOffsets": "<t3>"
 					  },
+			"conditions": [["!isGlobal", "<t3>"]],
+			"where": "before",
+			"in": "*"
+		},
+		{
+			"findInstructions": [
+						{
+							"returnValue": "*",
+							"instruction": "call",
+							"operands": ["<t3>","*", "<t4>","*","*", "llvm.memset.p0i8.i32"],
+							"stripInboundsOffsets": "<t3>",
+							"getSize":"<t5>"
+						}
+					   ],
+			"newInstruction": {
+					      "returnValue": "*",
+					      "instruction": "call",
+					      "operands": ["<t5>","<t4>", "__INSTR_check_constant_range"]
+					  },
+			"conditions": [["isGlobal", "<t3>"]],
+			"where": "before",
+			"in": "*"
+		},
+		{
+			"findInstructions": [
+						{
+							"returnValue": "*",
+							"instruction": "call",
+							"operands": ["<t3>","*", "<t4>","*","*", "llvm.memset.p0i8.i64"],
+							"stripInboundsOffsets": "<t3>",
+							"getSize":"<t5>"
+						}
+					   ],
+			"newInstruction": {
+					      "returnValue": "*",
+					      "instruction": "call",
+					      "operands": ["<t5>","<t4>", "__INSTR_check_constant_range"]
+					  },
+			"conditions": [["isGlobal", "<t3>"]],
+			"where": "before",
+			"in": "*"
+		},
+		{
+			"findInstructions": [
+						{
+							"returnValue": "*",
+							"instruction": "call",
+							"operands": ["<t3>","*", "<t4>", "memset"],
+							"stripInboundsOffsets": "<t3>",
+							"getSize":"<t5>"
+						}
+					   ],
+			"newInstruction": {
+					      "returnValue": "*",
+					      "instruction": "call",
+					      "operands": ["<t5>","<t4>", "__INSTR_check_constant_range"]
+					  },
+			"conditions": [["isGlobal", "<t3>"]],
 			"where": "before",
 			"in": "*"
 		},
@@ -320,7 +378,7 @@
 							  "returnValue": "*",
 							  "instruction": "load",
 							  "operands": ["<t1>"],
-							  "getSizeTo": "<t2>"
+							  "getAllocatedTypeSize": "<t2>"
 						   }
 					   ],
 			"newInstruction": {
@@ -329,7 +387,7 @@
 					      "operands": ["<t1>","<t2>", "__INSTR_check_load_store"]
 					  },
 			"where": "before",
-			"condition": ["!isValidPointer", "<t1>", "<t2>"],
+			"conditions": [["!isValidPointer", "<t1>", "<t2>"],["!isGlobal", "<t1>"]],
 			"in": "*"
 		},
 		{
@@ -338,7 +396,7 @@
 							  "returnValue": "*",
 							  "instruction": "store",
 							  "operands": ["<t1>", "<t2>"],
-							  "getSizeTo": "<t3>"
+							  "getAllocatedTypeSize": "<t3>"
 						    }
 					   ],
 			"newInstruction": {
@@ -347,7 +405,45 @@
 					      "operands": ["<t2>","<t3>", "__INSTR_check_load_store"]
 					  },
 			"where": "before",
-			"condition": ["!isValidPointer", "<t2>", "<t3>"],
+			"conditions": [["!isValidPointer", "<t2>", "<t3>"],["!isGlobal", "<t2>"]],
+			"in": "*"
+		},
+		{
+			"findInstructions": [
+						   {
+							  "returnValue": "*",
+							  "instruction": "load",
+							  "operands": ["<t1>"],
+							  "getAllocatedTypeSize": "<t2>",
+							  "getSize": "<t3>"
+						   }
+					   ],
+			"newInstruction": {
+					      "returnValue": "*",
+					      "instruction": "call",
+					      "operands": ["<t3>","<t2>", "__INSTR_check_constant_range"]
+					  },
+			"where": "before",
+			"conditions": [["!isValidPointer", "<t1>", "<t2>"],["isGlobal", "<t1>"]],
+			"in": "*"
+		},
+		{
+			"findInstructions": [
+							{
+							  "returnValue": "*",
+							  "instruction": "store",
+							  "operands": ["<t1>", "<t2>"],
+							  "getAllocatedTypeSize": "<t3>",
+							  "getSize": "<t4>"
+						    }
+					   ],
+			"newInstruction": {
+					      "returnValue": "*",
+					      "instruction": "call",
+					      "operands": ["<t4>","<t3>", "__INSTR_check_constant_range"]
+					  },
+			"where": "before",
+			"conditions": [["!isValidPointer", "<t2>", "<t3>"],["isGlobal", "<t2>"]],
 			"in": "*"
 		},
 		{
