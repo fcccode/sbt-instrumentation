@@ -32,9 +32,25 @@
 						"instruction": "call",
 						// __INSTR_remember takes the pointer, size of one element
 						// and number of elements and computes total size as <t2>*<t0>
-						"operands": ["<t1>","<t2>", "<t0>", "__INSTR_remember"]
+						"operands": ["<t1>","<t2>", "<t0>", "__INSTR_remember_alloca"]
 					  },
 			"where": "after",
+			"in": "*"
+		},
+		{
+			"findInstructions": [
+						{
+							"returnValue": "<t1>",
+							"instruction": "alloca",
+							"operands": ["*"],
+						}
+					   ],
+			"newInstruction": {
+						"returnValue": "*",
+						"instruction": "call",
+						"operands": ["<t1>","__INSTR_fsm_destroy"]
+					  },
+			"where": "return",
 			"in": "*"
 		},
 		{

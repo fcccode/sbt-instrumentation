@@ -60,6 +60,9 @@ void Rewriter::parseConfig(ifstream &config_file) {
 		else if (json_rules["instructionRules"][i]["where"] == "replace") {
 			r.where = InstrumentPlacement::REPLACE;
 		}
+		else if (json_rules["instructionRules"][i]["where"] == "return") {
+			r.where = InstrumentPlacement::RET;
+		}
 
 		r.inFunction = json_rules["instructionRules"][i]["in"].asString();
 
