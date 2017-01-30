@@ -42,7 +42,7 @@
 						{
 							"returnValue": "<t1>",
 							"instruction": "alloca",
-							"operands": ["*"],
+							"operands": ["*"]
 						}
 					   ],
 			"newInstruction": {
