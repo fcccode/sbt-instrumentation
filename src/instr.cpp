@@ -141,7 +141,20 @@ void EraseInstructions(Instruction* I, int count) {
 		currentInstr->eraseFromParent();
 		currentInstr = prevInstr;
 	}
+}
 
+/**
+ * Instruments new instruction before all return instructions in a given
+ * function.
+ * @param F function to be instrumented
+ * @param newInstr instruction to be inserted
+ */
+void InstrumentReturns(Function* F, Instruction* newInstr){
+	for (auto& block : *F) {
+		if (isa<ReturnInst>(block.getTerminator())) {
+			newInstr->insertBefore(block.getTemrinator());
+		}
+	}
 }
 
 /**
@@ -171,17 +184,17 @@ void InsertCallInstruction(Function* CalleeF, vector<Value *> args,
         newInstr->setDebugLoc(DebugLoc::get(DS->getLine(), 0, DS));
     }
 
-	if(rw_rule.where == InstrumentPlacement::BEFORE) {
+	if (rw_rule.where == InstrumentPlacement::BEFORE) {
 		// Insert before
 		newInstr->insertBefore(currentInstr);
 		logger.log_insertion("before", CalleeF, currentInstr);
 	}
-	else if(rw_rule.where == InstrumentPlacement::AFTER) {
+	else if (rw_rule.where == InstrumentPlacement::AFTER) {
 		// Insert after
 		newInstr->insertAfter(currentInstr);
 		logger.log_insertion("after", CalleeF, currentInstr);
 	}
-	else if(rw_rule.where == InstrumentPlacement::REPLACE) {
+	else if (rw_rule.where == InstrumentPlacement::REPLACE) {
 		// TODO: Make the functions use the iterator instead of
 		// the instruction then check this works
 		// In the end we move the iterator to the newInst position
@@ -192,6 +205,9 @@ void InsertCallInstruction(Function* CalleeF, vector<Value *> args,
 		*Iiterator = ++helper;
 		EraseInstructions(currentInstr, rw_rule.foundInstrs.size());
 		logger.log_insertion(rw_rule.foundInstrs, rw_rule.newInstr.instruction);
+	}
+	else if (rw_rule.where == InstrumentPlacement::RET) {
+		InstrumentReturns(currentInstr->getFunction(), newInstr);
 	}
 }
 

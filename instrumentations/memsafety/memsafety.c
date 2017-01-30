@@ -9,7 +9,8 @@ typedef enum {
 	FSM_STATE_ALLOCATED,
 	FSM_STATE_FREED,
 	FSM_STATE_ERROR,
-	FSM_STATE_NONE
+	FSM_STATE_NONE,
+	FSM_STATE_ALLOCA_INS
 } fsm_state;
 
 typedef enum {
@@ -85,7 +86,8 @@ fsm* __INSTR_fsm_list_search(fsm_id id) {
 fsm_state fsm_transition_table[4][2] = {{ FSM_STATE_FREED, FSM_STATE_ALLOCATED }, // allocated
                                         { FSM_STATE_ERROR, FSM_STATE_ALLOCATED }, // freed
                                         { FSM_STATE_ERROR, FSM_STATE_ERROR }, // error
-					{ FSM_STATE_NONE, FSM_STATE_NONE}};
+					{ FSM_STATE_NONE, FSM_STATE_NONE},
+					{ FSM_STATE_ALLOCA_INS, FSM_STATE_ALLOCA_INS}}; // state for fsms' created by alloca instruction;
 
 void __INSTR_fsm_change_state(fsm_id id, fsm_alphabet action) {
 
@@ -116,11 +118,24 @@ void __INSTR_fsm_change_state(fsm_id id, fsm_alphabet action) {
 }
 
 void __INSTR_remember(fsm_id id, a_size size, int num) {
- 
+
 	fsm *new_rec = (fsm *) malloc(sizeof(fsm));
 	new_rec->id = id;
 	new_rec->size = size * num;
         new_rec->state = FSM_STATE_NONE;
+
+	fsm_list_node *node = (fsm_list_node *) malloc(sizeof(fsm_list_node));
+	node->next = NULL;
+	node->fsm = new_rec;
+
+	__INSTR_fsm_list_append(node);
+}
+
+void __INSTR_remember_alloca(fsm_id id, a_size size, int num){
+	fsm *new_rec = (fsm *) malloc(sizeof(fsm));
+	new_rec->id = id;
+	new_rec->size = size * num;
+        new_rec->state = FSM_STATE_ALLOCA_INS;
 
 	fsm_list_node *node = (fsm_list_node *) malloc(sizeof(fsm_list_node));
 	node->next = NULL;
@@ -275,9 +290,9 @@ void __INSTR_realloc(fsm_id old_id, fsm_id new_id, size_t size) {
 	if(new_id == 0){
 	  return; //if realloc returns null, nothing happens
 	}
-	
+
 	fsm *m = NULL;
-	
+
 	if(old_id == 0){
 	  m = __INSTR_fsm_create(new_id, FSM_STATE_ALLOCATED);
 	  m->size = size;
@@ -285,13 +300,13 @@ void __INSTR_realloc(fsm_id old_id, fsm_id new_id, size_t size) {
 	}
 
 	m = __INSTR_fsm_list_search(old_id);
-	
+
 	if (m != NULL) {
 		if(m->state == FSM_STATE_FREED){
 		    assert(0 && "realloc on memory that has already been freed");
 		    __VERIFIER_error();
 		}
-		
+
 		fsm *new_rec = (fsm *) malloc(sizeof(fsm));
 		new_rec->id = new_id;
 		new_rec->size = size;
@@ -302,7 +317,7 @@ void __INSTR_realloc(fsm_id old_id, fsm_id new_id, size_t size) {
 		node->fsm = new_rec;
 
 		__INSTR_fsm_list_append(node);
-		__INSTR_fsm_destroy(old_id);		
+		__INSTR_fsm_destroy(old_id);
 	}
 	else{
 		assert(0 && "realloc on not allocated memory");

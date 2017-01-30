@@ -11,7 +11,8 @@
 enum class InstrumentPlacement {
 	BEFORE,
 	AFTER,
-	REPLACE
+	REPLACE,
+	RET
 };
 
 class InstrumentInstruction {
