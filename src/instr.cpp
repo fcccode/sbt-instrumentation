@@ -152,7 +152,7 @@ void EraseInstructions(Instruction* I, int count) {
 void InstrumentReturns(Function* F, Instruction* newInstr){
 	for (auto& block : *F) {
 		if (isa<ReturnInst>(block.getTerminator())) {
-			newInstr->insertBefore(block.getTemrinator());
+			newInstr->insertBefore(block.getTerminator());
 		}
 	}
 }
