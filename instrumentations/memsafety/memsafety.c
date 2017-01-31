@@ -49,6 +49,16 @@ void __INSTR_fsm_list_append(fsm_list_node *node) {
 	}
 }
 
+void __INSTR_fsm_list_prepend(fsm_list_node *node) {
+	if(fsm_list == NULL) {
+		fsm_list = node;
+	}
+	else {
+		node->next = fsm_list;
+		fsm_list = node;
+	}
+}
+
 fsm* __INSTR_fsm_create(fsm_id id, fsm_state state) {
 	fsm *new_fsm = (fsm *) malloc(sizeof(fsm));
 	new_fsm->id = id;
@@ -141,7 +151,7 @@ void __INSTR_remember_alloca(fsm_id id, a_size size, int num){
 	node->next = NULL;
 	node->fsm = new_rec;
 
-	__INSTR_fsm_list_append(node);
+	__INSTR_fsm_list_prepend(node);
 }
 
 void __INSTR_remember_malloc_size(fsm_id id, size_t size) {
