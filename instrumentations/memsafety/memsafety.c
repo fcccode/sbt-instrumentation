@@ -114,12 +114,11 @@ void __INSTR_fsm_change_state(fsm_id id, fsm_alphabet action) {
 			assert(0 && "free on non-allocated memory");
 			__VERIFIER_error();
 		}
-		/* FIXME: we set size to 0 & then call remember_size,
-		 * do it in one call */
-		m = __INSTR_fsm_add(id, 0, FSM_STATE_ALLOCATED);
+
+		abort();
 	}
 
-	if (m != NULL && m->state == FSM_STATE_ERROR) {
+	if (m->state == FSM_STATE_ERROR) {
 	        assert(0 && "double free");
 		__VERIFIER_error();
 	}
@@ -129,7 +128,7 @@ void __INSTR_remember(fsm_id id, a_size size, int num) {
 	__INSTR_fsm_add(id, size * num, FSM_STATE_NONE);
 }
 
-void __INSTR_remember_malloc_calloc(fsm_id id, size_t size, int num ) {
+void __INSTR_remember_malloc_calloc(fsm_id id, size_t size, int num) {
 	// there is no FSM for NULL
 	if (id == 0) {
 		return;
@@ -139,11 +138,7 @@ void __INSTR_remember_malloc_calloc(fsm_id id, size_t size, int num ) {
 	if (m != NULL) {
 		m->state = fsm_transition_table[m->state][FSM_ALPHABET_MALLOC];
 	} else {
-		m = __INSTR_fsm_create(id, FSM_STATE_ALLOCATED);
-	}
-
-	if (m != NULL) {
-	        m->size = size * num;
+		__INSTR_fsm_add(id, size * num, FSM_STATE_ALLOCATED);
 	}
 }
 
