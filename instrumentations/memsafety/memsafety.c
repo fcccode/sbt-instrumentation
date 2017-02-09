@@ -35,36 +35,35 @@ typedef struct fsm_list_node{
 
 fsm_list_node *fsm_list = NULL;
 
-void __INSTR_fsm_list_append(fsm_list_node *node) {
-	fsm_list_node *cur = fsm_list;
-
-	while((cur) && (cur->next)) {
-	  cur = cur->next;
-	}
-
-	if (cur == NULL) {
-		cur = node;
-		fsm_list = node;
-	} else {
-		cur->next = node;
-	}
+static void __INSTR_fsm_list_prepend(fsm_list_node *node) {
+	node->next = fsm_list;
+	fsm_list = node;
 }
 
-fsm* __INSTR_fsm_create(fsm_id id, fsm_state state) {
-	fsm *new_fsm = (fsm *) malloc(sizeof(fsm));
-	new_fsm->id = id;
-	new_fsm->state = state;
-
+static void __INSTR_fsm_list_prepend_new(fsm *new_fsm) {
 	fsm_list_node *node = (fsm_list_node *) malloc(sizeof(fsm_list_node));
-	node->next = NULL;
 	node->fsm = new_fsm;
 
-	__INSTR_fsm_list_append(node);
+	__INSTR_fsm_list_prepend(node);
+}
+
+static fsm* __INSTR_fsm_create(fsm_id id, a_size size, fsm_state state) {
+	fsm *new_fsm = (fsm *) malloc(sizeof(fsm));
+	new_fsm->id = id;
+	new_fsm->size = size;
+	new_fsm->state = state;
 
 	return new_fsm;
 }
 
-fsm* __INSTR_fsm_list_search(fsm_id id) {
+static inline fsm *__INSTR_fsm_add(fsm_id id, a_size size, fsm_state state) {
+	fsm *new_fsm = __INSTR_fsm_create(id, size, state);
+	__INSTR_fsm_list_prepend_new(new_fsm);
+
+	return new_fsm;
+}
+
+static fsm* __INSTR_fsm_list_search(fsm_id id) {
   	fsm_list_node *cur = fsm_list;
 
 	while(cur) {
@@ -86,15 +85,20 @@ fsm* __INSTR_fsm_list_search(fsm_id id) {
 
 // FSM manipulation
 
-fsm_state fsm_transition_table[4][2] = {{ FSM_STATE_FREED, FSM_STATE_ALLOCATED }, // allocated
-                                        { FSM_STATE_ERROR, FSM_STATE_ALLOCATED }, // freed
-                                        { FSM_STATE_ERROR, FSM_STATE_ERROR }, // error
-					{ FSM_STATE_NONE, FSM_STATE_NONE}};
+static fsm_state fsm_transition_table[4][2] = {
+	{ FSM_STATE_FREED, FSM_STATE_ALLOCATED }, // allocated
+	{ FSM_STATE_ERROR, FSM_STATE_ALLOCATED }, // freed
+	{ FSM_STATE_ERROR, FSM_STATE_ERROR }, // error
+	{ FSM_STATE_NONE, FSM_STATE_NONE}
+};
 
 void __INSTR_fsm_change_state(fsm_id id, fsm_alphabet action) {
-
 	// there is no FSM for NULL
 	if (id == 0) {
+		/*
+		if (action == FSM_ALPHABET_MALLOC)
+			assert(0 && "malloc failed");
+			*/
 		return;
 	}
 
@@ -110,7 +114,9 @@ void __INSTR_fsm_change_state(fsm_id id, fsm_alphabet action) {
 			assert(0 && "free on non-allocated memory");
 			__VERIFIER_error();
 		}
-		m = __INSTR_fsm_create(id, FSM_STATE_ALLOCATED);
+		/* FIXME: we set size to 0 & then call remember_size,
+		 * do it in one call */
+		m = __INSTR_fsm_add(id, 0, FSM_STATE_ALLOCATED);
 	}
 
 	if (m != NULL && m->state == FSM_STATE_ERROR) {
@@ -120,17 +126,7 @@ void __INSTR_fsm_change_state(fsm_id id, fsm_alphabet action) {
 }
 
 void __INSTR_remember(fsm_id id, a_size size, int num) {
- 
-	fsm *new_rec = (fsm *) malloc(sizeof(fsm));
-	new_rec->id = id;
-	new_rec->size = size * num;
-        new_rec->state = FSM_STATE_NONE;
-
-	fsm_list_node *node = (fsm_list_node *) malloc(sizeof(fsm_list_node));
-	node->next = NULL;
-	node->fsm = new_rec;
-
-	__INSTR_fsm_list_append(node);
+	__INSTR_fsm_add(id, size * num, FSM_STATE_NONE);
 }
 
 void __INSTR_remember_malloc_size(fsm_id id, size_t size) {
@@ -279,34 +275,24 @@ void __INSTR_realloc(fsm_id old_id, fsm_id new_id, size_t size) {
 	if(new_id == 0){
 	  return; //if realloc returns null, nothing happens
 	}
-	
+
 	fsm *m = NULL;
-	
+
 	if(old_id == 0){
-	  m = __INSTR_fsm_create(new_id, FSM_STATE_ALLOCATED);
-	  m->size = size;
+	  m = __INSTR_fsm_add(new_id, size, FSM_STATE_ALLOCATED);
 	  return;
 	}
 
 	m = __INSTR_fsm_list_search(old_id);
-	
+
 	if (m != NULL) {
 		if(m->state == FSM_STATE_FREED){
 		    assert(0 && "realloc on memory that has already been freed");
 		    __VERIFIER_error();
 		}
-		
-		fsm *new_rec = (fsm *) malloc(sizeof(fsm));
-		new_rec->id = new_id;
-		new_rec->size = size;
-		new_rec->state = FSM_STATE_ALLOCATED;
 
-		fsm_list_node *node = (fsm_list_node *) malloc(sizeof(fsm_list_node));
-		node->next = NULL;
-		node->fsm = new_rec;
-
-		__INSTR_fsm_list_append(node);
-		__INSTR_fsm_destroy(old_id);		
+		__INSTR_fsm_destroy(old_id);
+		__INSTR_fsm_add(new_id, size, FSM_STATE_ALLOCATED);
 	}
 	else{
 		assert(0 && "realloc on not allocated memory");
