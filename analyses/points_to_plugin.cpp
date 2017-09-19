@@ -3,7 +3,7 @@
 #include <llvm/IR/Constants.h>
 #include "instr_plugin.hpp"
 #include "llvm/analysis/PointsTo/PointsTo.h"
-#include "analysis/PointsTo/PointsToFlowSensitive.h"
+#include "analysis/PointsTo/PointsToWithInvalidate.h"
 #include "call_graph.hpp"
 
 using dg::analysis::pta::PSNode;
@@ -176,7 +176,7 @@ class PointsToPlugin : public InstrPlugin
     PointsToPlugin(llvm::Module* module) {
         llvm::errs() << "Running points-to analysis...\n";
         PTA = std::unique_ptr<dg::LLVMPointerAnalysis>(new dg::LLVMPointerAnalysis(module));
-        PTA->run<dg::analysis::pta::PointsToFlowSensitive>();
+        PTA->run<dg::analysis::pta::PointsToWithInvalidate>();
     }
 };
 
